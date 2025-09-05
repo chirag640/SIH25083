@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Plus, Save, Stethoscope, Pill, Syringe, TestTube, AlertTriangle, X } from "lucide-react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { SecurityUtils } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { useEffect as _useEffect, EffectCallback, DependencyList } from "react"
 
 interface MedicalVisit {
   id: string
@@ -175,6 +176,35 @@ export default function AddVisitPage() {
       },
     ])
   }
+
+  const searchParams = useSearchParams()
+
+  // Auto-open mode if provided: "prescribe" | "lab" | "vaccination"
+  const mode = searchParams?.get("mode")
+
+  // On mount, if mode present, pre-add a row and scroll to that section
+  useEffect(() => {
+    if (!mode) return
+    if (mode === "prescribe") {
+      if (medications.length === 0) addMedication()
+      setTimeout(() => {
+        document.querySelector('#prescription')?.scrollIntoView({ behavior: 'smooth' })
+      }, 50)
+    }
+    if (mode === "lab") {
+      if (labTests.length === 0) addLabTest()
+      setTimeout(() => {
+        document.querySelector('#labtests')?.scrollIntoView({ behavior: 'smooth' })
+      }, 50)
+    }
+    if (mode === "vaccination") {
+      if (vaccinations.length === 0) addVaccination()
+      setTimeout(() => {
+        document.querySelector('#vaccinations')?.scrollIntoView({ behavior: 'smooth' })
+      }, 50)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const updateLabTest = (index: number, field: keyof LabTest, value: string) => {
     const updated = [...labTests]
@@ -384,6 +414,7 @@ export default function AddVisitPage() {
 
           {/* Prescription */}
           <Card>
+            <div id="prescription" />
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -484,6 +515,7 @@ export default function AddVisitPage() {
 
           {/* Vaccinations */}
           <Card>
+            <div id="vaccinations" />
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -568,6 +600,7 @@ export default function AddVisitPage() {
 
           {/* Lab Tests */}
           <Card>
+            <div id="labtests" />
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -709,3 +742,8 @@ export default function AddVisitPage() {
     </div>
   )
 }
+function useEffect(effect: EffectCallback, deps?: DependencyList) {
+  // Delegate to React's built-in hook so the component behaves as expected.
+  return _useEffect(effect, deps)
+}
+

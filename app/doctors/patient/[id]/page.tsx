@@ -613,17 +613,23 @@ export default function DoctorPatientView() {
                         Add New Visit
                       </Link>
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Pill className="h-4 w-4 mr-2" />
-                      Prescribe Medication
+                    <Button className="w-full" variant="outline" asChild>
+                      <Link href={`/doctors/patient/${workerId}/add-visit?mode=prescribe`}>
+                        <Pill className="h-4 w-4 mr-2" />
+                        Prescribe Medication
+                      </Link>
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <TestTube className="h-4 w-4 mr-2" />
-                      Order Lab Tests
+                    <Button className="w-full" variant="outline" asChild>
+                      <Link href={`/doctors/patient/${workerId}/add-visit?mode=lab`}>
+                        <TestTube className="h-4 w-4 mr-2" />
+                        Order Lab Tests
+                      </Link>
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Syringe className="h-4 w-4 mr-2" />
-                      Record Vaccination
+                    <Button className="w-full" variant="outline" asChild>
+                      <Link href={`/doctors/patient/${workerId}/add-visit?mode=vaccination`}>
+                        <Syringe className="h-4 w-4 mr-2" />
+                        Record Vaccination
+                      </Link>
                     </Button>
                     <Button className="w-full bg-transparent" variant="outline" asChild>
                       <Link href={`/workers/${worker.workerId}`}>

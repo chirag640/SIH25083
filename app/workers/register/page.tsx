@@ -106,9 +106,12 @@ export default function RegisterWorkerPage() {
     return errors.length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  console.log("Register worker submit invoked", formData)
+  const handleSubmit = async (e?: React.FormEvent) => {
+  if (isSubmitting) return
+  if (e && typeof (e as any).preventDefault === "function") {
+      ;(e as React.FormEvent).preventDefault()
+    }
+    console.log("Register worker submit invoked", formData)
 
     if (!validateForm()) {
       return
@@ -167,6 +170,12 @@ export default function RegisterWorkerPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const submitClicked = () => {
+    console.log("Register button clicked")
+    toast({ title: "Submitting", description: "Saving registration..." })
+    void handleSubmit()
   }
 
   const updateFormData = (field: keyof WorkerData, value: string | boolean) => {
@@ -416,7 +425,7 @@ export default function RegisterWorkerPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting} onClick={() => formRef.current?.requestSubmit()}>
+              <Button type="button" className="w-full" disabled={isSubmitting} onClick={submitClicked}>
                 <Save className="mr-2 h-4 w-4" />
                 {isSubmitting ? t.registration.savingSecurely : t.registration.registerWorker}
               </Button>
