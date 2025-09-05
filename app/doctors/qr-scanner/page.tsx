@@ -1,20 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, QrCode, Search, AlertTriangle } from "lucide-react"
+import { ArrowLeft, QrCode, Search, AlertTriangle, Download } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { DataManager, SecurityUtils, type EncryptedWorkerData } from "@/lib/utils"
 
 export default function QRScannerPage() {
   const router = useRouter()
   const [manualId, setManualId] = useState("")
   const [scanResult, setScanResult] = useState<any>(null)
+  const [workerPreview, setWorkerPreview] = useState<any>(null)
+  const [qrUrl, setQrUrl] = useState<string>("")
   const [error, setError] = useState("")
+  const [scanning, setScanning] = useState(false)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const detectorRef = useRef<any>(null)
 
   const handleManualSearch = () => {
     if (!manualId.trim()) {
@@ -39,20 +45,143 @@ export default function QRScannerPage() {
       if (key && key.startsWith("worker_")) {
         const workerData = localStorage.getItem(key)
         if (workerData) {
-          const worker = JSON.parse(workerData)
-          const qrData = {
-            id: worker.workerId,
-            name: worker.fullName,
-            bloodGroup: worker.bloodGroup,
-            allergies: worker.allergies,
+            try {
+              const encryptedWorker: EncryptedWorkerData = JSON.parse(workerData)
+
+              const integrity = DataManager.verifyDataIntegrity(encryptedWorker)
+              const decrypted = integrity ? DataManager.decryptSensitiveData(encryptedWorker) : encryptedWorker
+
+              // Build QR image URL matching health-card generator
+              const qrData = JSON.stringify({
+                id: decrypted.workerId,
+                name: decrypted.fullName,
+                bloodGroup: decrypted.bloodGroup,
+                allergies: decrypted.allergies,
+                type: "health_record",
+              })
+              const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
+
+              setScanResult({ id: decrypted.workerId, name: decrypted.fullName })
+              setWorkerPreview({ ...decrypted })
+              setQrUrl(qrImageUrl)
+              setError("")
+              SecurityUtils.logAccess("qr_scan_simulated", decrypted.workerId, "doctor")
+              return
+            } catch (e) {
+              // fallback to raw parse
+              const worker = JSON.parse(workerData)
+              const qrData = {
+                id: worker.workerId,
+                name: worker.fullName,
+                bloodGroup: worker.bloodGroup,
+                allergies: worker.allergies,
+              }
+              setScanResult(qrData)
+              setError("")
+              return
+            }
           }
-          setScanResult(qrData)
-          setError("")
-          return
-        }
       }
     }
     setError("No worker records available for demo scan")
+  }
+
+  const stopCamera = () => {
+    setScanning(false)
+    try {
+      const video = videoRef.current
+      if (video && video.srcObject) {
+        const tracks = (video.srcObject as MediaStream).getTracks()
+        tracks.forEach((t) => t.stop())
+        video.srcObject = null
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Stop camera when component unmounts
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleDetected = (rawValue: string) => {
+    if (!rawValue) return
+    let parsed: any = null
+    try {
+      parsed = JSON.parse(rawValue)
+    } catch (e) {
+      // raw text, not JSON
+      parsed = { raw: rawValue }
+    }
+
+    // If payload contains a health_record deep link, navigate to printable card
+    if (parsed && parsed.id && parsed.type === "health_record") {
+      SecurityUtils.logAccess("qr_scan_live", parsed.id, "doctor")
+      // Prefer showing the health-card deep link
+      router.push(`/workers/health-card/${parsed.id}`)
+      setScanResult(parsed)
+      setWorkerPreview(parsed)
+      return
+    }
+
+    // If payload looks like {id, name}, route to doctor patient view
+    if (parsed && parsed.id) {
+      SecurityUtils.logAccess("qr_scan_live", parsed.id, "doctor")
+      setScanResult(parsed)
+      setWorkerPreview(parsed)
+      // don't auto-navigate to full patient record here — leave user to click
+      return
+    }
+
+    setError("Unrecognized QR payload")
+  }
+
+  const startCamera = async () => {
+    setError("")
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+      setScanning(true)
+
+      // Use BarcodeDetector when available
+      const BarcodeDetectorClass = (window as any).BarcodeDetector
+      if (BarcodeDetectorClass) {
+        try {
+          detectorRef.current = new BarcodeDetectorClass({ formats: ["qr_code"] })
+          const detectLoop = async () => {
+            if (!scanning) return
+            try {
+              if (!videoRef.current) return
+              const detections = await detectorRef.current.detect(videoRef.current)
+              if (detections && detections.length > 0) {
+                handleDetected(detections[0].rawValue)
+                stopCamera()
+                return
+              }
+            } catch (e) {
+              // detection may throw intermittently; ignore
+            }
+            requestAnimationFrame(detectLoop)
+          }
+          detectLoop()
+          return
+        } catch (e) {
+          // fall through to fallback
+        }
+      }
+
+      // Fallback: inform user and keep camera running for manual capture via simulate
+      setError("Live QR scanning not supported in this browser; using camera preview. Use 'Simulate QR Scan' as fallback.")
+    } catch (e) {
+      setError("Camera permission denied or not available")
+    }
   }
 
   const viewPatientDetails = () => {
@@ -93,13 +222,21 @@ export default function QRScannerPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Simulated Camera View */}
-              <div className="aspect-square max-w-sm mx-auto bg-muted border-2 border-dashed border-border rounded-lg flex items-center justify-center">
-                <div className="text-center space-y-4">
-                  <QrCode className="h-16 w-16 text-muted-foreground mx-auto" />
-                  <p className="text-muted-foreground">Camera view would appear here</p>
-                  <Button onClick={simulateQRScan} className="mt-4">
-                    Simulate QR Scan
-                  </Button>
+              <div className="aspect-square max-w-sm mx-auto bg-muted border-2 border-dashed border-border rounded-lg flex items-center justify-center relative">
+                <div className="text-center space-y-4 w-full h-full flex flex-col items-center justify-center">
+                  {/* Video preview for live scanning */}
+                  <video ref={videoRef} className="w-full h-full object-cover rounded" playsInline />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {!scanning && <QrCode className="h-16 w-16 text-muted-foreground mx-auto" />}
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    {!scanning ? (
+                      <Button onClick={startCamera}>Start Camera</Button>
+                    ) : (
+                      <Button variant="outline" onClick={stopCamera}>Stop Camera</Button>
+                    )}
+                    <Button onClick={simulateQRScan}>Simulate QR Scan</Button>
+                  </div>
                 </div>
               </div>
 
@@ -136,13 +273,60 @@ export default function QRScannerPage() {
                     </div>
                   )}
                 </div>
-
-                <Button onClick={viewPatientDetails} className="w-full">
-                  View Full Patient Details
-                </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button onClick={viewPatientDetails} className="w-full">
+                      View Full Patient Details
+                    </Button>
+                    <Button asChild variant="outline" onClick={() => { if (scanResult) window.open(`/workers/health-card/${scanResult.id}`, "_blank") }}>
+                      <a>Open Health Card</a>
+                    </Button>
+                  </div>
               </CardContent>
             </Card>
           )}
+
+            {/* Health card preview when workerPreview is available */}
+            {workerPreview && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Health Card Preview</CardTitle>
+                  <CardDescription>Quick preview of the worker's health card</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    <div className="flex-shrink-0">
+                      {qrUrl && <img src={qrUrl} alt="qr" className="w-32 h-32 border border-border rounded" />}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold">{workerPreview.fullName}</h3>
+                      <p className="text-sm text-muted-foreground">ID: {workerPreview.workerId}</p>
+                      <div className="flex gap-2 mt-2">
+                        {workerPreview.bloodGroup && <Badge variant="destructive">{workerPreview.bloodGroup}</Badge>}
+                        {workerPreview.gender && <Badge variant="secondary">{workerPreview.gender}</Badge>}
+                      </div>
+                      {workerPreview.allergies && (
+                        <div className="mt-3 p-2 bg-destructive/10 border border-destructive/20 rounded">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
+                            <span className="text-destructive font-medium">Allergies</span>
+                          </div>
+                          <p className="text-destructive mt-1">{workerPreview.allergies}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex mt-4 gap-2">
+                    <Button onClick={viewPatientDetails}>Open Patient Record</Button>
+                    <Button variant="outline" asChild>
+                      <a href={`/workers/health-card/${workerPreview.workerId}`} target="_blank" rel="noreferrer">
+                        <Download className="mr-2 h-4 w-4" /> View/Download Card
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Manual ID Entry */}
           <Card>

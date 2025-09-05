@@ -616,6 +616,51 @@ export class StorageUtils {
     }
   }
 
+    static deleteWorker(workerId: string): boolean {
+      try {
+        // Remove worker record (support both legacy and namespaced keys)
+        const keysToRemove: string[] = []
+
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (!key) continue
+
+          // worker keys
+          if (key === `worker_${workerId}` || key === `${this.PREFIX}worker_${workerId}`) {
+            keysToRemove.push(key)
+          }
+
+          // medical visits
+          if (key === `medical_visits_${workerId}`) {
+            keysToRemove.push(key)
+          }
+
+          // documents for worker: document_<workerId>_<docId>
+          if (key.startsWith(`document_${workerId}_`) || key.startsWith(`${this.PREFIX}document_${workerId}_`)) {
+            keysToRemove.push(key)
+          }
+        }
+
+        // Remove keys
+        keysToRemove.forEach((k) => localStorage.removeItem(k))
+
+        // Also remove any namespaced document entries (alternate pattern)
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i)
+          if (!key) continue
+          if (key.includes(`document_${workerId}_`) || key.includes(`worker_${workerId}`)) {
+            localStorage.removeItem(key)
+          }
+        }
+
+        SecurityUtils.logAccess("delete_worker", workerId, "health_worker")
+        return true
+      } catch (error) {
+        console.error("Failed to delete worker:", error)
+        return false
+      }
+    }
+
   static createBackup(): string {
     const backup = {
       timestamp: new Date().toISOString(),

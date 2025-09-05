@@ -10,9 +10,8 @@ export const metadata: Metadata = {
   title: "Migrant Worker Healthcare System",
   description:
     "Comprehensive healthcare record management system for migrant workers with multilingual support, QR code access, and secure document storage.",
-  generator: "v0.app",
   keywords: ["healthcare", "migrant workers", "medical records", "QR codes", "multilingual"],
-  authors: [{ name: "Healthcare System Team" }],
+  authors: [{ name: "Chirag Chaudhary" }],
   openGraph: {
     title: "Migrant Worker Healthcare System",
     description: "Secure healthcare record management for migrant workers",

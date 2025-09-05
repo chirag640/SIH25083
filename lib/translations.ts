@@ -262,7 +262,7 @@ export const translations: Record<string, Translations> = {
       securePrivate: "Secure & Private",
       securePrivateDesc: "End-to-end encryption and secure data storage",
       securePrivateDetail: "All health data is encrypted and stored securely with proper consent management",
-      footer: "© 2024 HealthRecord System. Built for migrant worker healthcare access.",
+      footer: "© 2025 HealthRecord System. Built for migrant worker healthcare access.",
     },
     registration: {
       title: "Register New Worker",
@@ -475,7 +475,7 @@ export const translations: Record<string, Translations> = {
       securePrivate: "സുരക്ഷിതവും സ്വകാര്യവും",
       securePrivateDesc: "എൻഡ്-ടു-എൻഡ് എൻക്രിപ്ഷനും സുരക്ഷിത ഡാറ്റ സ്റ്റോറേജും",
       securePrivateDetail: "എല്ലാ ആരോഗ്യ ഡാറ്റയും എൻക്രിപ്റ്റ് ചെയ്യുകയും ശരിയായ സമ്മത മാനേജ്മെന്റോടെ സുരക്ഷിതമായി സംഭരിക്കുകയും ചെയ്യുന്നു",
-      footer: "© 2024 ആരോഗ്യരേഖ സിസ്റ്റം. കുടിയേറ്റ തൊഴിലാളികളുടെ ആരോഗ്യ പരിരക്ഷയ്ക്കായി നിർമ്മിച്ചത്.",
+      footer: "© 2025 ആരോഗ്യരേഖ സിസ്റ്റം. കുടിയേറ്റ തൊഴിലാളികളുടെ ആരോഗ്യ പരിരക്ഷയ്ക്കായി നിർമ്മിച്ചത്.",
     },
     registration: {
       title: "പുതിയ തൊഴിലാളിയെ രജിസ്റ്റർ ചെയ്യുക",
@@ -688,7 +688,7 @@ export const translations: Record<string, Translations> = {
       securePrivateDesc: "एंड-टू-एंड एन्क्रिप्शन और सुरक्षित डेटा स्टोरेज",
       securePrivateDetail:
         "सभी स्वास्थ्य डेटा एन्क्रिप्ट किया जाता है और उचित सहमति प्रबंधन के साथ सुरक्षित रूप से संग्रहीत किया जाता है",
-      footer: "© 2024 स्वास्थ्य रिकॉर्ड सिस्टम। प्रवासी श्रमिक स्वास्थ्य पहुंच के लिए निर्मित।",
+      footer: "© 2025 स्वास्थ्य रिकॉर्ड सिस्टम। प्रवासी श्रमिक स्वास्थ्य पहुंच के लिए निर्मित।",
     },
     registration: {
       title: "नया श्रमिक पंजीकृत करें",

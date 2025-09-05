@@ -16,14 +16,17 @@ import {
   getStorageStats,
   exportSystemData,
   importSystemData,
+  // delete worker helper
+  // eslint-disable-next-line import/no-unresolved
 } from "@/lib/utils"
+import { StorageUtils } from "@/lib/utils"
 
 export default function AdminDashboard() {
   const [language, setLanguage] = useState("en")
   const t = useTranslations(language)
   const [activeTab, setActiveTab] = useState("overview")
 
-  const workers = getAllWorkers()
+  const [workers, setWorkers] = useState(() => getAllWorkers())
   const documents = getAllDocuments()
   const auditLogs = getAuditLogs()
   const storageStats = getStorageStats()
@@ -36,6 +39,20 @@ export default function AdminDashboard() {
     const file = event.target.files?.[0]
     if (file) {
       importSystemData(file)
+    }
+  }
+
+  const handleDeleteWorker = (workerId: string) => {
+    const ok = confirm(`Delete worker ${workerId}? This will remove the worker record, visits and documents.`)
+    if (!ok) return
+
+    const success = StorageUtils.deleteWorker(workerId)
+    if (success) {
+      // Refresh local state
+      setWorkers(getAllWorkers())
+      // Log already done inside deleteWorker
+    } else {
+      alert("Failed to delete worker. Check console for details.")
     }
   }
 
@@ -163,11 +180,16 @@ export default function AdminDashboard() {
                           <Badge variant="outline">{worker.bloodGroup}</Badge>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm">Age: {worker.age}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Registered: {new Date(worker.registrationDate).toLocaleDateString()}
-                        </p>
+                      <div className="text-right flex flex-col items-end space-y-2">
+                        <div>
+                          <p className="text-sm">Age: {worker.age}</p>
+                          <p className="text-xs text-muted-foreground">Registered: {new Date(worker.registrationDate).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteWorker(worker.id)}>
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -187,12 +209,12 @@ export default function AdminDashboard() {
                   {documents.map((doc, index) => (
                     <div key={index} className="flex items-center justify-between border-b pb-4">
                       <div>
-                        <h3 className="font-medium">{doc.name}</h3>
+                        <h3 className="font-medium">{doc.fileName}</h3>
                         <p className="text-sm text-muted-foreground">Worker ID: {doc.workerId}</p>
-                        <Badge variant="outline">{doc.type}</Badge>
+                        <Badge variant="outline">{doc.documentType}</Badge>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm">{(doc.size / 1024).toFixed(1)} KB</p>
+                        <p className="text-sm">{(doc.fileSize / 1024).toFixed(1)} KB</p>
                         <p className="text-xs text-muted-foreground">{new Date(doc.uploadDate).toLocaleDateString()}</p>
                       </div>
                     </div>
