@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,10 +26,20 @@ export default function AdminDashboard() {
   const t = useTranslations(language)
   const [activeTab, setActiveTab] = useState("overview")
 
-  const [workers, setWorkers] = useState(() => getAllWorkers())
-  const documents = getAllDocuments()
-  const auditLogs = getAuditLogs()
-  const storageStats = getStorageStats()
+  const [workers, setWorkers] = useState<any[]>([])
+  const [documents, setDocuments] = useState<any[]>([])
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [storageStats, setStorageStats] = useState<{ usedMB: number; totalMB: number }>({ usedMB: 0, totalMB: 0 })
+
+  // Defer reading from localStorage-backed helpers to client-only effect
+  // This guarantees no browser-only APIs are accessed during SSR/prerender
+  useEffect(() => {
+    setWorkers(getAllWorkers())
+    setDocuments(getAllDocuments())
+    setAuditLogs(getAuditLogs())
+    setStorageStats(getStorageStats())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleExportData = () => {
     exportSystemData()

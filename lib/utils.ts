@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Detect browser runtime before accessing window/localStorage
+const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+
 export class SecurityUtils {
   // Simple encryption for demo purposes - in production, use proper encryption libraries
   private static readonly ENCRYPTION_KEY = "healthcare-security-key-2024"
@@ -91,6 +94,14 @@ export class SecurityUtils {
     }
 
     // Store audit log in localStorage (in production, send to secure server)
+    if (!isBrowser) {
+      // On server, just print a condensed log and skip storage
+      // This avoids ReferenceError during static builds / SSR
+      // eslint-disable-next-line no-console
+      console.debug("logAccess (server):", logEntry.action, logEntry.workerId)
+      return
+    }
+
     const existingLogs = JSON.parse(localStorage.getItem("audit_logs") || "[]")
     existingLogs.push(logEntry)
 
@@ -225,6 +236,11 @@ export class SecurityUtils {
   }
 
   private static getSessionId(): string {
+    if (!isBrowser) {
+      // Return a transient session id on server side
+      return `session_server_${Date.now()}`
+    }
+
     let sessionId = sessionStorage.getItem("session_id")
     if (!sessionId) {
       sessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
@@ -232,6 +248,7 @@ export class SecurityUtils {
     }
     return sessionId
   }
+
 }
 
 export interface EncryptedWorkerData {
@@ -337,6 +354,17 @@ export class EnhancedStorageManager {
     workerCount: number
     documentCount: number
   } {
+    if (!isBrowser) {
+      return {
+        used: 0,
+        available: this.MAX_STORAGE_SIZE,
+        percentage: 0,
+        itemCount: 0,
+        workerCount: 0,
+        documentCount: 0,
+      }
+    }
+
     let totalSize = 0
     let itemCount = 0
     let workerCount = 0
@@ -370,7 +398,8 @@ export class EnhancedStorageManager {
   }
 
   static performStorageCleanup(): boolean {
-    const stats = this.getStorageStats()
+  if (!isBrowser) return false
+  const stats = this.getStorageStats()
 
     if (stats.percentage < this.CLEANUP_THRESHOLD * 100) {
       return false // No cleanup needed
@@ -407,7 +436,8 @@ export class StorageUtils {
   private static readonly PREFIX = "healthrecord_"
 
   static getAllWorkers(): any[] {
-    const workers: any[] = []
+  if (!isBrowser) return []
+  const workers: any[] = []
     // Support both legacy keys (worker_...) and namespaced keys (healthrecord_worker_...)
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -429,7 +459,8 @@ export class StorageUtils {
   }
 
   static getAllDocuments(): DocumentRecord[] {
-    const docs: DocumentRecord[] = []
+  if (!isBrowser) return []
+  const docs: DocumentRecord[] = []
     // Support both legacy and namespaced document keys
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -451,6 +482,7 @@ export class StorageUtils {
   }
 
   static getAuditLogs(): any[] {
+    if (!isBrowser) return []
     try {
       const raw = localStorage.getItem("audit_logs") || "[]"
       return JSON.parse(raw)
