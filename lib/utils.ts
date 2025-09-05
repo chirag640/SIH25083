@@ -8,6 +8,31 @@ export function cn(...inputs: ClassValue[]) {
 // Detect browser runtime before accessing window/localStorage
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined"
 
+// Safe base64 helpers that work both in browser and Node (used during build/SSR)
+function safeBtoa(input: string): string {
+  if (isBrowser && typeof btoa === "function") return btoa(input)
+  try {
+    // Node.js fallback
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const buf = Buffer.from(input, "binary")
+    return buf.toString("base64")
+  } catch (e) {
+    return input
+  }
+}
+
+function safeAtob(input: string): string {
+  if (isBrowser && typeof atob === "function") return atob(input)
+  try {
+    // Node.js fallback
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const buf = Buffer.from(input, "base64")
+    return buf.toString("binary")
+  } catch (e) {
+    return input
+  }
+}
+
 export class SecurityUtils {
   // Simple encryption for demo purposes - in production, use proper encryption libraries
   private static readonly ENCRYPTION_KEY = "healthcare-security-key-2024"
@@ -22,7 +47,7 @@ export class SecurityUtils {
         const textChar = text.charCodeAt(i)
         encrypted += String.fromCharCode(textChar ^ keyChar)
       }
-      return btoa(encrypted) // Base64 encode
+  return safeBtoa(encrypted) // Base64 encode (safe for SSR)
     } catch (error) {
       console.error("Encryption error:", error)
       return text
@@ -32,7 +57,7 @@ export class SecurityUtils {
   static decrypt(encryptedText: string): string {
     if (!encryptedText) return encryptedText
     try {
-      const decoded = atob(encryptedText) // Base64 decode
+  const decoded = safeAtob(encryptedText) // Base64 decode (safe for SSR)
       let decrypted = ""
       for (let i = 0; i < decoded.length; i++) {
         const keyChar = this.ENCRYPTION_KEY.charCodeAt(i % this.ENCRYPTION_KEY.length)
@@ -144,6 +169,11 @@ export class SecurityUtils {
   }
 
   private static logCriticalAction(logEntry: any): void {
+    if (!isBrowser) {
+      // No-op during SSR
+      return
+    }
+
     const criticalLogs = JSON.parse(localStorage.getItem("critical_audit_logs") || "[]")
     criticalLogs.push({
       ...logEntry,
@@ -241,7 +271,8 @@ export class SecurityUtils {
       return `session_server_${Date.now()}`
     }
 
-    let sessionId = sessionStorage.getItem("session_id")
+  if (typeof sessionStorage === "undefined") return `session_server_${Date.now()}`
+  let sessionId = sessionStorage.getItem("session_id")
     if (!sessionId) {
       sessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
       sessionStorage.setItem("session_id", sessionId)
@@ -502,6 +533,11 @@ export class StorageUtils {
   }
 
   static exportSystemData(): void {
+    if (!isBrowser) {
+      // During SSR/build, simply return (no-op)
+      return
+    }
+
     const payload = {
       workers: this.getAllWorkers(),
       documents: this.getAllDocuments(),
@@ -523,6 +559,10 @@ export class StorageUtils {
   }
 
   static async importSystemData(file: File): Promise<void> {
+    if (!isBrowser) {
+      throw new Error("importSystemData can only be run in the browser")
+    }
+
     try {
       const text = await file.text()
       const parsed = JSON.parse(text)
@@ -555,6 +595,8 @@ export class StorageUtils {
 
   // CSV export helper used by dashboards
   static exportToCSV(rows: any[], headers: string[], fileName = "export.csv") {
+    if (!isBrowser) return
+
     const csv = [headers.join(",")].concat(
       rows.map((r) => headers.map((h) => {
         const v = r[h] ?? ""
@@ -578,6 +620,10 @@ export class StorageUtils {
   }
 
   static exportAllData(): string {
+    if (!isBrowser) {
+      return JSON.stringify({ version: "1.0", exportDate: new Date().toISOString(), workers: [], documents: [], auditLogs: [] })
+    }
+
     const exportData = {
       version: "1.0",
       exportDate: new Date().toISOString(),
@@ -626,7 +672,7 @@ export class StorageUtils {
         if (item.key && item.data) {
           // Verify data integrity before import
           if (DataManager.verifyDataIntegrity(item.data)) {
-            localStorage.setItem(item.key, JSON.stringify(item.data))
+            if (isBrowser) localStorage.setItem(item.key, JSON.stringify(item.data))
             importedCount++
           }
         }
@@ -635,12 +681,12 @@ export class StorageUtils {
       // Import documents
       importData.documents.forEach((item: any) => {
         if (item.key && item.data) {
-          localStorage.setItem(item.key, JSON.stringify(item.data))
+          if (isBrowser) localStorage.setItem(item.key, JSON.stringify(item.data))
           importedCount++
         }
       })
 
-      SecurityUtils.logAccess("data_import_completed", undefined, "health_worker")
+  SecurityUtils.logAccess("data_import_completed", undefined, "health_worker")
       return { success: true, message: "Data imported successfully", imported: importedCount }
     } catch (error) {
       console.error("Data import failed:", error)
@@ -651,39 +697,41 @@ export class StorageUtils {
     static deleteWorker(workerId: string): boolean {
       try {
         // Remove worker record (support both legacy and namespaced keys)
-        const keysToRemove: string[] = []
+          if (!isBrowser) return false
 
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (!key) continue
+          const keysToRemove: string[] = []
 
-          // worker keys
-          if (key === `worker_${workerId}` || key === `${this.PREFIX}worker_${workerId}`) {
-            keysToRemove.push(key)
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (!key) continue
+
+            // worker keys
+            if (key === `worker_${workerId}` || key === `${this.PREFIX}worker_${workerId}`) {
+              keysToRemove.push(key)
+            }
+
+            // medical visits
+            if (key === `medical_visits_${workerId}`) {
+              keysToRemove.push(key)
+            }
+
+            // documents for worker: document_<workerId>_<docId>
+            if (key.startsWith(`document_${workerId}_`) || key.startsWith(`${this.PREFIX}document_${workerId}_`)) {
+              keysToRemove.push(key)
+            }
           }
 
-          // medical visits
-          if (key === `medical_visits_${workerId}`) {
-            keysToRemove.push(key)
-          }
+          // Remove keys
+          keysToRemove.forEach((k) => localStorage.removeItem(k))
 
-          // documents for worker: document_<workerId>_<docId>
-          if (key.startsWith(`document_${workerId}_`) || key.startsWith(`${this.PREFIX}document_${workerId}_`)) {
-            keysToRemove.push(key)
+          // Also remove any namespaced document entries (alternate pattern)
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i)
+            if (!key) continue
+            if (key.includes(`document_${workerId}_`) || key.includes(`worker_${workerId}`)) {
+              localStorage.removeItem(key)
+            }
           }
-        }
-
-        // Remove keys
-        keysToRemove.forEach((k) => localStorage.removeItem(k))
-
-        // Also remove any namespaced document entries (alternate pattern)
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const key = localStorage.key(i)
-          if (!key) continue
-          if (key.includes(`document_${workerId}_`) || key.includes(`worker_${workerId}`)) {
-            localStorage.removeItem(key)
-          }
-        }
 
         SecurityUtils.logAccess("delete_worker", workerId, "health_worker")
         return true
@@ -849,6 +897,8 @@ export class DocumentManager {
   }
 
   static getDocumentsByWorkerId(workerId: string): DocumentRecord[] {
+    if (!isBrowser) return []
+
     const documents: DocumentRecord[] = []
 
     for (let i = 0; i < localStorage.length; i++) {
@@ -875,6 +925,7 @@ export class DocumentManager {
   }
 
   static storeDocument(workerId: string, document: DocumentRecord): boolean {
+    if (!isBrowser) return false
     try {
       // Create structured storage path: /documents/{workerId}/filename
       const documentPath = `document_${workerId}_${document.id}`
@@ -904,6 +955,7 @@ export class DocumentManager {
   }
 
   static deleteDocument(workerId: string, documentId: string): boolean {
+    if (!isBrowser) return false
     try {
       const documentPath = `document_${workerId}_${documentId}`
       localStorage.removeItem(documentPath)
@@ -944,7 +996,9 @@ export class DocumentManager {
     documentTypes: Record<string, number>
     recentUploads: number
   } {
-    const documents = this.getDocumentsByWorkerId(workerId)
+  if (!isBrowser) return { totalDocuments: 0, totalSize: 0, documentTypes: {}, recentUploads: 0 }
+
+  const documents = this.getDocumentsByWorkerId(workerId)
     const now = new Date()
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -969,7 +1023,8 @@ export class DocumentManager {
   }
 
   static searchDocuments(workerId: string, query: string): DocumentRecord[] {
-    const documents = this.getDocumentsByWorkerId(workerId)
+  if (!isBrowser) return []
+  const documents = this.getDocumentsByWorkerId(workerId)
     const searchTerm = query.toLowerCase()
 
     return documents.filter((doc) => {
