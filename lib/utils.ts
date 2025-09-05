@@ -642,6 +642,102 @@ export class StorageUtils {
   }
 }
 
+// Backwards-compatible named exports used by UI pages
+export function getAllWorkers(): any[] {
+  const raw = StorageUtils.getAllWorkers()
+  const normalized = raw.map((item: any) => {
+    try {
+      // If item is in EncryptedWorkerData shape, try to verify & decrypt
+      if (item && item.workerId) {
+        const integrity = DataManager.verifyDataIntegrity(item as any)
+        const decrypted = integrity ? DataManager.decryptSensitiveData(item as any) : item
+
+        const dob = decrypted.dateOfBirth || decrypted.dob || ""
+        let age = ""
+        if (dob) {
+          const b = new Date(dob)
+          const today = new Date()
+          let a = today.getFullYear() - b.getFullYear()
+          const m = today.getMonth() - b.getMonth()
+          if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--
+          age = String(a)
+        }
+
+        return {
+          id: decrypted.workerId || decrypted.id || "",
+          name: decrypted.fullName || decrypted.name || "",
+          gender: decrypted.gender || "",
+          bloodGroup: decrypted.bloodGroup || "",
+          age: age,
+          registrationDate: decrypted.createdAt || decrypted.registrationDate || "",
+        }
+      }
+
+      // Fallback: map common legacy shapes
+      return {
+        id: item.workerId || item.id || "",
+        name: item.fullName || item.name || "",
+        gender: item.gender || "",
+        bloodGroup: item.bloodGroup || item.blood || "",
+        age: item.age || "",
+        registrationDate: item.createdAt || item.registrationDate || "",
+      }
+    } catch (e) {
+      return {
+        id: item.workerId || item.id || "",
+        name: item.fullName || item.name || "",
+        gender: item.gender || "",
+        bloodGroup: item.bloodGroup || item.blood || "",
+        age: item.age || "",
+        registrationDate: item.createdAt || item.registrationDate || "",
+      }
+    }
+  })
+
+  return normalized
+}
+
+export function getAllDocuments(): DocumentRecord[] {
+  const raw = StorageUtils.getAllDocuments()
+  // Normalize to admin-friendly shape: { name, workerId, type, size, uploadDate }
+  return raw.map((d: any) => ({
+    id: d.id,
+    workerId: d.workerId,
+    fileName: d.fileName || d.name || d.id,
+    fileType: d.fileType || "application/octet-stream",
+    documentType: d.documentType || d.type || "other",
+    uploadDate: d.uploadDate || d.createdAt || "",
+    fileSize: d.fileSize || d.size || 0,
+    description: d.description || "",
+    isEncrypted: Boolean(d.isEncrypted),
+    fileData: d.fileData || "",
+    version: d.version || 1,
+    tags: d.tags || [],
+    checksum: d.checksum || "",
+    lastAccessed: d.lastAccessed || "",
+    accessCount: d.accessCount || 0,
+  }))
+}
+
+export function getAuditLogs(): any[] {
+  return StorageUtils.getAuditLogs()
+}
+
+export function getStorageStats(): { usedMB: number; totalMB: number } {
+  const stats = EnhancedStorageManager.getStorageStats()
+  const usedMB = Math.round((stats.used / (1024 * 1024)) * 10) / 10
+  const totalMB = Math.round(((stats.used + stats.available) / (1024 * 1024)) * 10) / 10
+  return { usedMB, totalMB }
+}
+
+export function exportSystemData(): void {
+  return StorageUtils.exportSystemData()
+}
+
+export async function importSystemData(file: File): Promise<void> {
+  return StorageUtils.importSystemData(file)
+}
+
 export class DocumentManager {
   static async convertFileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
