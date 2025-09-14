@@ -1,0 +1,80 @@
+{
+  "name": "Migrant Worker Healthcare System",
+  "short_name": "Healthcare System",
+  "description": "Comprehensive healthcare record management system for migrant workers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0369a1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["healthcare", "medical", "government"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Register Worker",
+      "short_name": "Register",
+      "description": "Register a new migrant worker",
+      "url": "/workers/register",
+      "icons": [
+        {
+          "src": "/shortcut-register.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Search Records",
+      "short_name": "Search",
+      "description": "Search worker health records",
+      "url": "/workers/search",
+      "icons": [
+        {
+          "src": "/shortcut-search.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Emergency Support",
+      "short_name": "Emergency",
+      "description": "Get emergency healthcare support",
+      "url": "/help",
+      "icons": [
+        {
+          "src": "/shortcut-emergency.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

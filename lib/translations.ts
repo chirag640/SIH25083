@@ -306,7 +306,7 @@ export const translations: Record<string, Translations> = {
       selectGender: "Select gender",
       errors: {
         fullNameRequired: "Full name is required",
-        fullNameInvalid: "Full name contains invalid characters",
+        fullNameInvalid: "Please enter a valid full name (2-100 characters, letters and common punctuation only)",
         dobRequired: "Date of birth is required",
         ageRange: "Age must be between 16 and 100 years",
         genderRequired: "Gender is required",

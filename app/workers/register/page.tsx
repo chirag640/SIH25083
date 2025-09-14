@@ -10,12 +10,31 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Save, Shield, AlertTriangle, Globe } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { 
+  ArrowLeft, 
+  Save, 
+  Shield, 
+  AlertTriangle, 
+  Globe, 
+  User, 
+  MapPin, 
+  Phone, 
+  Heart, 
+  FileText, 
+  CheckCircle,
+  ArrowRight,
+  UserPlus,
+  Calendar,
+  Home
+} from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { SecurityUtils, DataManager } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/lib/translations"
+import { Navigation } from "@/components/navigation"
 
 interface WorkerData {
   fullName: string
@@ -36,6 +55,8 @@ export default function RegisterWorkerPage() {
   const router = useRouter()
   const [language, setLanguage] = useState("en")
   const t = useTranslations(language)
+  const [currentStep, setCurrentStep] = useState(1)
+  const totalSteps = 4
 
   const [formData, setFormData] = useState<WorkerData>({
     fullName: "",
@@ -54,55 +75,90 @@ export default function RegisterWorkerPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const formRef = useRef<HTMLFormElement | null>(null)
   const { toast } = useToast()
 
+  const progressPercentage = (currentStep / totalSteps) * 100
+
+  const stepTitles = [
+    "Personal Information",
+    "Contact & Location",
+    "Health Information", 
+    "Review & Submit"
+  ]
+
+  const stepIcons = [User, MapPin, Heart, CheckCircle]
+
+  // Live validation for individual fields
+  const validateField = (field: keyof WorkerData, value: string | boolean): string => {
+    switch (field) {
+      case "fullName":
+        if (!value || typeof value !== "string") return t.registration.errors.fullNameRequired
+        if (!SecurityUtils.validateName(value)) return t.registration.errors.fullNameInvalid
+        return ""
+      case "dateOfBirth":
+        if (!value || typeof value !== "string") return t.registration.errors.dobRequired
+        const birthDate = new Date(value)
+        const today = new Date()
+        const age = today.getFullYear() - birthDate.getFullYear()
+        if (age < 16 || age > 100) return t.registration.errors.ageRange
+        return ""
+      case "gender":
+        if (!value || typeof value !== "string") return t.registration.errors.genderRequired
+        return ""
+      case "nativeState":
+        if (!value || typeof value !== "string") return t.registration.errors.nativeStateRequired
+        return ""
+      case "nativeDistrict":
+        if (!value || typeof value !== "string") return t.registration.errors.nativeDistrictRequired
+        return ""
+      case "currentAddress":
+        if (!value || typeof value !== "string") return t.registration.errors.currentAddressRequired
+        return ""
+      case "phoneNumber":
+        if (value && typeof value === "string" && !SecurityUtils.validatePhoneNumber(value)) {
+          return t.registration.errors.phoneInvalid
+        }
+        return ""
+      case "consent":
+        if (!value) return t.registration.errors.consentRequired
+        return ""
+      default:
+        return ""
+    }
+  }
+
   const validateForm = (): boolean => {
     const errors: string[] = []
+    const newFieldErrors: Record<string, string> = {}
 
-    // Validate required fields
-    if (!formData.fullName.trim()) {
-      errors.push(t.registration.errors.fullNameRequired)
-    } else if (!SecurityUtils.validateName(formData.fullName)) {
-      errors.push(t.registration.errors.fullNameInvalid)
-    }
+    // Validate all required fields
+    const fieldsToValidate: (keyof WorkerData)[] = [
+      "fullName", "dateOfBirth", "gender", "nativeState", 
+      "nativeDistrict", "currentAddress", "phoneNumber", "consent"
+    ]
 
-    if (!formData.dateOfBirth) {
-      errors.push(t.registration.errors.dobRequired)
-    } else {
-      const birthDate = new Date(formData.dateOfBirth)
-      const today = new Date()
-      const age = today.getFullYear() - birthDate.getFullYear()
-      if (age < 16 || age > 100) {
-        errors.push(t.registration.errors.ageRange)
+    fieldsToValidate.forEach(field => {
+      const error = validateField(field, formData[field])
+      if (error) {
+        errors.push(error)
+        newFieldErrors[field] = error
       }
-    }
-
-    if (!formData.gender) {
-      errors.push(t.registration.errors.genderRequired)
-    }
-
-    if (!formData.nativeState.trim()) {
-      errors.push(t.registration.errors.nativeStateRequired)
-    }
-
-    if (!formData.nativeDistrict.trim()) {
-      errors.push(t.registration.errors.nativeDistrictRequired)
-    }
-
-    if (!formData.currentAddress.trim()) {
-      errors.push(t.registration.errors.currentAddressRequired)
-    }
-
-    if (formData.phoneNumber && !SecurityUtils.validatePhoneNumber(formData.phoneNumber)) {
-      errors.push(t.registration.errors.phoneInvalid)
-    }
-
-    if (!formData.consent) {
-      errors.push(t.registration.errors.consentRequired)
-    }
+    })
 
     setValidationErrors(errors)
+    setFieldErrors(newFieldErrors)
+
+    // Show toast for validation errors
+    if (errors.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `Please fix ${errors.length} error${errors.length > 1 ? 's' : ''} before proceeding`,
+        variant: "destructive"
+      })
+    }
+
     return errors.length === 0
   }
 
@@ -157,15 +213,23 @@ export default function RegisterWorkerPage() {
       // Log the registration action
       SecurityUtils.logAccess("worker_registration", workerId, "health_worker")
 
-  // Show success toast
-  toast({ title: "Registration saved", description: "Worker registered successfully" })
+      // Show success toast
+      toast({
+        title: "Registration Successful! 🎉",
+        description: `Welcome ${formData.fullName}! Your Worker ID is ${workerId}`,
+      })
 
-      // Redirect to worker profile
-      router.push(`/workers/${workerId}`)
+      // Brief delay to show the success message
+      setTimeout(() => {
+        router.push(`/workers/${workerId}`)
+      }, 1500)
     } catch (error) {
       console.error("Error saving worker record:", error)
-      setValidationErrors([t.registration.errors.savingError])
-  toast({ title: "Registration failed", description: "Unable to save worker record" , variant: "destructive"})
+      toast({
+        title: "Registration Failed",
+        description: "We couldn't save your registration. Please try again or contact support if the problem persists.",
+        variant: "destructive"
+      })
       SecurityUtils.logAccess("worker_registration_failed", undefined, "health_worker")
     } finally {
       setIsSubmitting(false)
@@ -174,264 +238,548 @@ export default function RegisterWorkerPage() {
 
   const submitClicked = () => {
     console.log("Register button clicked")
-    toast({ title: "Submitting", description: "Saving registration..." })
+    toast({ 
+      title: "Processing Registration...", 
+      description: "Please wait while we save your information securely"
+    })
     void handleSubmit()
   }
 
   const updateFormData = (field: keyof WorkerData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear validation errors when user starts typing
+    
+    // Live validation - validate field after user input
+    const error = validateField(field, value)
+    setFieldErrors(prev => ({
+      ...prev,
+      [field]: error
+    }))
+    
+    // Clear general validation errors when user starts fixing issues
     if (validationErrors.length > 0) {
       setValidationErrors([])
     }
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  {t.common.backToHome}
-                </Link>
-              </Button>
-              <h1 className="text-2xl font-bold text-foreground">{t.registration.title}</h1>
+  const validateCurrentStep = (): boolean => {
+    let stepFields: (keyof WorkerData)[] = []
+    
+    switch (currentStep) {
+      case 1:
+        stepFields = ["fullName", "dateOfBirth", "gender"]
+        break
+      case 2:
+        stepFields = ["nativeState", "nativeDistrict", "currentAddress", "phoneNumber"]
+        break
+      case 3:
+        // Health information is optional
+        return true
+      case 4:
+        stepFields = ["consent"]
+        break
+    }
+
+    const errors: string[] = []
+    const newFieldErrors: Record<string, string> = {}
+
+    stepFields.forEach(field => {
+      const error = validateField(field, formData[field])
+      if (error) {
+        errors.push(error)
+        newFieldErrors[field] = error
+      }
+    })
+
+    setFieldErrors(prev => ({ ...prev, ...newFieldErrors }))
+
+    if (errors.length > 0) {
+      toast({
+        title: "Please complete this step",
+        description: `Fix ${errors.length} error${errors.length > 1 ? 's' : ''} before continuing`,
+        variant: "destructive"
+      })
+    }
+
+    return errors.length === 0
+  }
+
+  const nextStep = () => {
+    if (validateCurrentStep() && currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1)
+      toast({
+        title: "Step completed",
+        description: `Proceeding to ${stepTitles[currentStep]}`,
+      })
+    }
+  }
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-2">Personal Information</h3>
+              <p className="text-muted-foreground">Let's start with your basic details</p>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ml">മലയാളം</SelectItem>
-                  <SelectItem value="hi">हिंदी</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-base font-medium">{t.registration.fullName} *</Label>
+                <div className="relative">
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => updateFormData("fullName", e.target.value)}
+                    required
+                    maxLength={100}
+                    className={`h-12 text-lg pr-10 ${
+                      fieldErrors.fullName 
+                        ? 'border-destructive focus:border-destructive' 
+                        : formData.fullName && !fieldErrors.fullName 
+                        ? 'border-green-500 focus:border-green-500' 
+                        : ''
+                    }`}
+                    placeholder="Enter your full name"
+                  />
+                  {formData.fullName && !fieldErrors.fullName && (
+                    <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                  )}
+                </div>
+                {fieldErrors.fullName && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    {fieldErrors.fullName}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth" className="text-base font-medium">{t.registration.dateOfBirth} *</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => updateFormData("dateOfBirth", e.target.value)}
+                    required
+                    max={new Date().toISOString().split("T")[0]}
+                    className={`h-12 ${fieldErrors.dateOfBirth ? 'border-destructive focus:border-destructive' : ''}`}
+                  />
+                  {fieldErrors.dateOfBirth && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      {fieldErrors.dateOfBirth}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gender" className="text-base font-medium">{t.registration.gender} *</Label>
+                  <Select value={formData.gender} onValueChange={(value) => updateFormData("gender", value)}>
+                    <SelectTrigger className={`h-12 ${fieldErrors.gender ? 'border-destructive focus:border-destructive' : ''}`}>
+                      <SelectValue placeholder={t.registration.selectGender} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">{t.registration.male}</SelectItem>
+                      <SelectItem value="female">{t.registration.female}</SelectItem>
+                      <SelectItem value="other">{t.registration.other}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.gender && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      {fieldErrors.gender}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        )
 
-      <main className="container mx-auto px-4 py-8">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Shield className="h-5 w-5 text-primary" />
-              <span>{t.registration.formTitle}</span>
-            </CardTitle>
-            <CardDescription>{t.registration.formDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {validationErrors.length > 0 && (
-              <Alert className="mb-6 border-destructive/20 bg-destructive/5">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                <AlertTitle>{(t.registration.errors as any).title}</AlertTitle>
-                <div className="space-y-1">
-                  {validationErrors.map((error, index) => (
-                    <p key={index} className="text-destructive text-sm">
-                      {error}
-                    </p>
-                  ))}
-                </div>
-              </Alert>
-            )}
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MapPin className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-2">Contact & Location</h3>
+              <p className="text-muted-foreground">Where can we reach you?</p>
+            </div>
 
-            <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground">{t.registration.personalInfo}</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">{t.registration.fullName} *</Label>
-                    <Input
-                      id="fullName"
-                      value={formData.fullName}
-                      onChange={(e) => updateFormData("fullName", e.target.value)}
-                      required
-                      maxLength={100}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="dateOfBirth">{t.registration.dateOfBirth} *</Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => updateFormData("dateOfBirth", e.target.value)}
-                      required
-                      max={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">{t.registration.gender} *</Label>
-                    <Select value={formData.gender} onValueChange={(value) => updateFormData("gender", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t.registration.selectGender} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">{t.registration.male}</SelectItem>
-                        <SelectItem value="female">{t.registration.female}</SelectItem>
-                        <SelectItem value="other">{t.registration.other}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">{t.registration.phoneNumber}</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      value={formData.phoneNumber}
-                      onChange={(e) => updateFormData("phoneNumber", e.target.value)}
-                      maxLength={15}
-                    />
-                  </div>
-                </div>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="text-base font-medium">{t.registration.phoneNumber} *</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={(e) => updateFormData("phoneNumber", e.target.value)}
+                  maxLength={15}
+                  className={`h-12 text-lg ${fieldErrors.phoneNumber ? 'border-destructive focus:border-destructive' : ''}`}
+                  placeholder="+91 XXXXX XXXXX"
+                />
+                {fieldErrors.phoneNumber && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    {fieldErrors.phoneNumber}
+                  </p>
+                )}
               </div>
 
-              {/* Location Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground">{t.registration.locationInfo}</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nativeState">{t.registration.nativeState} *</Label>
-                    <Input
-                      id="nativeState"
-                      value={formData.nativeState}
-                      onChange={(e) => updateFormData("nativeState", e.target.value)}
-                      required
-                      maxLength={50}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="nativeDistrict">{t.registration.nativeDistrict} *</Label>
-                    <Input
-                      id="nativeDistrict"
-                      value={formData.nativeDistrict}
-                      onChange={(e) => updateFormData("nativeDistrict", e.target.value)}
-                      required
-                      maxLength={50}
-                    />
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="currentAddress">{t.registration.currentAddressKerala} *</Label>
-                  <Textarea
-                    id="currentAddress"
-                    value={formData.currentAddress}
-                    onChange={(e) => updateFormData("currentAddress", e.target.value)}
+                  <Label htmlFor="nativeState" className="text-base font-medium">{t.registration.nativeState} *</Label>
+                  <Input
+                    id="nativeState"
+                    value={formData.nativeState}
+                    onChange={(e) => updateFormData("nativeState", e.target.value)}
                     required
-                    maxLength={500}
+                    maxLength={50}
+                    className={`h-12 ${fieldErrors.nativeState ? 'border-destructive focus:border-destructive' : ''}`}
+                    placeholder="Your home state"
                   />
+                  {fieldErrors.nativeState && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      {fieldErrors.nativeState}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nativeDistrict" className="text-base font-medium">{t.registration.nativeDistrict} *</Label>
+                  <Input
+                    id="nativeDistrict"
+                    value={formData.nativeDistrict}
+                    onChange={(e) => updateFormData("nativeDistrict", e.target.value)}
+                    required
+                    maxLength={50}
+                    className={`h-12 ${fieldErrors.nativeDistrict ? 'border-destructive focus:border-destructive' : ''}`}
+                    placeholder="Your home district"
+                  />
+                  {fieldErrors.nativeDistrict && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      {fieldErrors.nativeDistrict}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Health Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground flex items-center space-x-2">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span>{t.registration.healthInfoEncrypted}</span>
-                </h3>
+              <div className="space-y-2">
+                <Label htmlFor="currentAddress" className="text-base font-medium">{t.registration.currentAddressKerala} *</Label>
+                <Textarea
+                  id="currentAddress"
+                  value={formData.currentAddress}
+                  onChange={(e) => updateFormData("currentAddress", e.target.value)}
+                  required
+                  maxLength={500}
+                  className={`min-h-[120px] ${fieldErrors.currentAddress ? 'border-destructive focus:border-destructive' : ''}`}
+                  placeholder="Enter your current address where you're working"
+                />
+                {fieldErrors.currentAddress && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    {fieldErrors.currentAddress}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="bloodGroup">{t.registration.bloodGroup}</Label>
-                    <Select value={formData.bloodGroup} onValueChange={(value) => updateFormData("bloodGroup", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t.registration.selectBloodGroup} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A+">A+</SelectItem>
-                        <SelectItem value="A-">A-</SelectItem>
-                        <SelectItem value="B+">B+</SelectItem>
-                        <SelectItem value="B-">B-</SelectItem>
-                        <SelectItem value="AB+">AB+</SelectItem>
-                        <SelectItem value="AB-">AB-</SelectItem>
-                        <SelectItem value="O+">O+</SelectItem>
-                        <SelectItem value="O-">O-</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-2">Health Information</h3>
+              <p className="text-muted-foreground">Your health data is encrypted and secure</p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="allergies">{t.registration.allergies}</Label>
-                  <Textarea
-                    id="allergies"
-                    value={formData.allergies}
-                    onChange={(e) => updateFormData("allergies", e.target.value)}
-                    placeholder={t.registration.allergiesPlaceholder}
-                    maxLength={1000}
-                  />
-                </div>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-6">
+              <div className="flex items-center space-x-2 mb-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <span className="font-medium text-blue-900">Data Security</span>
+              </div>
+              <p className="text-sm text-blue-800">All health information is encrypted and stored securely. Only authorized healthcare providers can access this data.</p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="currentMedication">{t.registration.currentMedication}</Label>
-                  <Textarea
-                    id="currentMedication"
-                    value={formData.currentMedication}
-                    onChange={(e) => updateFormData("currentMedication", e.target.value)}
-                    placeholder={t.registration.currentMedicationPlaceholder}
-                    maxLength={1000}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="healthHistory">{t.registration.healthHistory}</Label>
-                  <Textarea
-                    id="healthHistory"
-                    value={formData.healthHistory}
-                    onChange={(e) => updateFormData("healthHistory", e.target.value)}
-                    placeholder={t.registration.healthHistoryPlaceholder}
-                    maxLength={2000}
-                  />
-                </div>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="bloodGroup" className="text-base font-medium">{t.registration.bloodGroup}</Label>
+                <Select value={formData.bloodGroup} onValueChange={(value) => updateFormData("bloodGroup", value)}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder={t.registration.selectBloodGroup} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A+">A+</SelectItem>
+                    <SelectItem value="A-">A-</SelectItem>
+                    <SelectItem value="B+">B+</SelectItem>
+                    <SelectItem value="B-">B-</SelectItem>
+                    <SelectItem value="AB+">AB+</SelectItem>
+                    <SelectItem value="AB-">AB-</SelectItem>
+                    <SelectItem value="O+">O+</SelectItem>
+                    <SelectItem value="O-">O-</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Consent */}
-              <div className="space-y-4">
-                <div className="p-4 bg-muted/50 border border-border rounded-lg">
-                  <h4 className="font-semibold text-foreground mb-2">{t.registration.dataPrivacySecurity}</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    {t.registration.privacyPoints.map((point, index) => (
-                      <li key={index}>• {point}</li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="allergies" className="text-base font-medium">{t.registration.allergies}</Label>
+                <Textarea
+                  id="allergies"
+                  value={formData.allergies}
+                  onChange={(e) => updateFormData("allergies", e.target.value)}
+                  placeholder={t.registration.allergiesPlaceholder}
+                  maxLength={1000}
+                  className="min-h-[100px]"
+                />
+              </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="consent"
-                    checked={formData.consent}
-                    onCheckedChange={(checked) => updateFormData("consent", checked as boolean)}
-                  />
-                  <Label htmlFor="consent" className="text-sm">
+              <div className="space-y-2">
+                <Label htmlFor="currentMedication" className="text-base font-medium">{t.registration.currentMedication}</Label>
+                <Textarea
+                  id="currentMedication"
+                  value={formData.currentMedication}
+                  onChange={(e) => updateFormData("currentMedication", e.target.value)}
+                  placeholder={t.registration.currentMedicationPlaceholder}
+                  maxLength={1000}
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="healthHistory" className="text-base font-medium">{t.registration.healthHistory}</Label>
+                <Textarea
+                  id="healthHistory"
+                  value={formData.healthHistory}
+                  onChange={(e) => updateFormData("healthHistory", e.target.value)}
+                  placeholder={t.registration.healthHistoryPlaceholder}
+                  maxLength={2000}
+                  className="min-h-[120px]"
+                />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground mb-2">Review & Submit</h3>
+              <p className="text-muted-foreground">Please review your information before submitting</p>
+            </div>
+
+            <div className="space-y-4">
+              <Card className="p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <User className="h-5 w-5 text-blue-600" />
+                  <h4 className="font-semibold">Personal Information</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-muted-foreground">Name:</span> {formData.fullName}</div>
+                  <div><span className="text-muted-foreground">DOB:</span> {formData.dateOfBirth}</div>
+                  <div><span className="text-muted-foreground">Gender:</span> {formData.gender}</div>
+                  <div><span className="text-muted-foreground">Phone:</span> {formData.phoneNumber}</div>
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                  <h4 className="font-semibold">Location Details</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-muted-foreground">Native State:</span> {formData.nativeState}</div>
+                  <div><span className="text-muted-foreground">Native District:</span> {formData.nativeDistrict}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Current Address:</span> {formData.currentAddress}</div>
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <Heart className="h-5 w-5 text-red-600" />
+                  <h4 className="font-semibold">Health Information</h4>
+                </div>
+                <div className="text-sm">
+                  <div className="mb-2"><span className="text-muted-foreground">Blood Group:</span> {formData.bloodGroup || 'Not specified'}</div>
+                  {formData.allergies && <div className="mb-2"><span className="text-muted-foreground">Allergies:</span> {formData.allergies}</div>}
+                  {formData.currentMedication && <div className="mb-2"><span className="text-muted-foreground">Current Medication:</span> {formData.currentMedication}</div>}
+                  {formData.healthHistory && <div><span className="text-muted-foreground">Health History:</span> {formData.healthHistory}</div>}
+                </div>
+              </Card>
+
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 className="font-semibold text-yellow-900 mb-2">{t.registration.dataPrivacySecurity}</h4>
+                <ul className="text-sm text-yellow-800 space-y-1">
+                  {t.registration.privacyPoints.map((point, index) => (
+                    <li key={index}>• {point}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className={`flex items-start space-x-3 p-4 bg-white border rounded-lg ${fieldErrors.consent ? 'border-destructive' : 'border-border'}`}>
+                <Checkbox
+                  id="consent"
+                  checked={formData.consent}
+                  onCheckedChange={(checked) => updateFormData("consent", checked as boolean)}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="consent" className="text-sm font-medium">
                     {t.registration.consentText}
                   </Label>
+                  {fieldErrors.consent && (
+                    <p className="text-sm text-destructive flex items-center gap-1 mt-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      {fieldErrors.consent}
+                    </p>
+                  )}
                 </div>
               </div>
+            </div>
+          </div>
+        )
 
-              <Button type="button" className="w-full" disabled={isSubmitting} onClick={submitClicked}>
-                <Save className="mr-2 h-4 w-4" />
-                {isSubmitting ? t.registration.savingSecurely : t.registration.registerWorker}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white">
+      <Navigation language={language} onLanguageChange={setLanguage} translations={t} />
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 border-blue-200">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Worker Registration
+            </Badge>
+            <h1 className="text-3xl font-bold text-foreground mb-2">{t.registration.title}</h1>
+            <p className="text-lg text-muted-foreground">Secure healthcare registration for migrant workers</p>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              {stepTitles.map((title, index) => {
+                const StepIcon = stepIcons[index]
+                const stepNumber = index + 1
+                const isActive = stepNumber === currentStep
+                const isCompleted = stepNumber < currentStep
+
+                return (
+                  <div key={index} className="flex items-center">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
+                      isCompleted 
+                        ? 'bg-green-500 border-green-500 text-white' 
+                        : isActive 
+                        ? 'bg-blue-500 border-blue-500 text-white' 
+                        : 'bg-white border-gray-300 text-gray-400'
+                    }`}>
+                      {isCompleted ? (
+                        <CheckCircle className="w-5 h-5" />
+                      ) : (
+                        <StepIcon className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div className="ml-3 hidden md:block">
+                      <p className={`text-sm font-medium ${isActive || isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {title}
+                      </p>
+                    </div>
+                    {index < stepTitles.length - 1 && (
+                      <div className={`hidden md:block w-16 h-0.5 ml-4 ${
+                        stepNumber < currentStep ? 'bg-green-500' : 'bg-gray-200'
+                      }`} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <Progress value={progressPercentage} className="h-2" />
+          </div>
+
+          {/* Main Form Card */}
+          <Card className="shadow-lg border-0">
+            <CardContent className="p-8">
+              {renderStepContent()}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between mt-8 pt-6 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                  className="flex items-center space-x-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Previous</span>
+                </Button>
+
+                {currentStep < totalSteps ? (
+                  <Button
+                    onClick={nextStep}
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center space-x-2"
+                  >
+                    <span>Next</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={submitClicked}
+                    disabled={isSubmitting || !formData.consent}
+                    className="bg-gradient-to-r from-green-600 to-green-700 text-white flex items-center space-x-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        <span>Registering...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Register Worker</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Help Section */}
+          <div className="mt-8 text-center">
+            <p className="text-muted-foreground mb-2">Need help with registration?</p>
+            <Button variant="ghost" asChild>
+              <Link href="/help" className="text-blue-600 hover:text-blue-700">
+                <Phone className="w-4 h-4 mr-2" />
+                Contact Support: 1800-XXX-XXXX
+              </Link>
+            </Button>
+          </div>
+        </div>
       </main>
     </div>
   )

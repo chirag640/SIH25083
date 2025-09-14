@@ -400,32 +400,42 @@ export default function HealthCardGeneratorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
+      <header className="border-b border-border bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="hover:bg-green-50">
                 <Link href={`/workers/dashboard`}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Dashboard
                 </Link>
               </Button>
-              <h1 className="text-2xl font-bold text-foreground">{t.title}</h1>
-              <Badge variant="secondary">{worker.fullName}</Badge>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CreditCard className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">{t.title}</h1>
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                    <Shield className="h-3 w-3 mr-1" />
+                    {worker.fullName}
+                  </Badge>
+                </div>
+              </div>
             </div>
 
             {/* Language Selector */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3 bg-gray-50 rounded-lg p-2">
               <Globe className="h-4 w-4 text-muted-foreground" />
               <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-32 border-0 bg-transparent focus:ring-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ml">മലയാളം</SelectItem>
-                  <SelectItem value="hi">हिंदी</SelectItem>
+                  <SelectItem value="en">🇺🇸 English</SelectItem>
+                  <SelectItem value="ml">🇮🇳 മലയാളം</SelectItem>
+                  <SelectItem value="hi">🇮🇳 हिंदी</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -436,104 +446,200 @@ export default function HealthCardGeneratorPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Controls */}
-          <Card>
-            <CardHeader>
+          <Card className="shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
               <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+                <CreditCard className="h-5 w-5 text-green-600" />
                 Health Card Options
               </CardTitle>
-              <CardDescription>Customize and download your health card</CardDescription>
+              <CardDescription>Customize and download your health card in multiple formats</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.cardStyle}</label>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-foreground">{t.cardStyle}</label>
                   <Select value={cardStyle} onValueChange={setCardStyle}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-48 h-12 border-2 focus:border-green-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">{t.standard}</SelectItem>
-                      <SelectItem value="emergency">{t.emergency}</SelectItem>
-                      <SelectItem value="compact">{t.compact}</SelectItem>
+                      <SelectItem value="standard">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                          <span>{t.standard} - Complete information</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="emergency">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-red-500 rounded"></div>
+                          <span>{t.emergency} - Essential only</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="compact">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-green-500 rounded"></div>
+                          <span>{t.compact} - Pocket size</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="flex gap-2 items-end">
-                  <Button onClick={downloadAsPNG} variant="outline">
+                <div className="flex flex-wrap gap-3 items-end">
+                  <Button 
+                    onClick={downloadAsPNG} 
+                    variant="outline"
+                    className="h-12 px-6 border-green-200 text-green-700 hover:bg-green-50"
+                  >
                     <Download className="mr-2 h-4 w-4" />
                     {t.downloadPNG}
                   </Button>
-                  <Button onClick={downloadAsPDF} variant="outline">
+                  <Button 
+                    onClick={downloadAsPDF} 
+                    variant="outline"
+                    className="h-12 px-6 border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
                     <Download className="mr-2 h-4 w-4" />
                     {t.downloadPDF}
                   </Button>
-                  <Button onClick={printCard} variant="outline">
+                  <Button 
+                    onClick={printCard} 
+                    className="h-12 px-6 bg-green-600 hover:bg-green-700 text-white"
+                  >
                     <Printer className="mr-2 h-4 w-4" />
                     {t.printCard}
                   </Button>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-start space-x-3">
+                  <Shield className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900">Secure Health Card</p>
+                    <p className="text-xs text-green-700 mt-1">
+                      This card contains encrypted health information and can be verified using the QR code. 
+                      All downloads are logged for security purposes.
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Card Preview */}
-          <Card>
-            <CardHeader>
+          <Card className="shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
               <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5" />
+                <QrCode className="h-5 w-5 text-blue-600" />
                 Card Preview
+                <Badge variant="outline" className="ml-2 capitalize">
+                  {cardStyle} Style
+                </Badge>
               </CardTitle>
-              <CardDescription>Preview of your health card in {cardStyle} style</CardDescription>
+              <CardDescription>
+                Live preview of your health card • Click the card to view full size
+              </CardDescription>
             </CardHeader>
-            <CardContent className="flex justify-center">
-              <div className="border border-border rounded-lg p-4 bg-white">
-                <canvas
-                  ref={canvasRef}
-                  className="border border-gray-200 rounded shadow-sm"
-                  style={{ maxWidth: "100%", height: "auto" }}
-                />
+            <CardContent className="p-8">
+              <div className="flex justify-center">
+                <div className="relative">
+                  <div className="border-2 border-gray-200 rounded-xl p-6 bg-white shadow-lg hover:shadow-xl transition-shadow">
+                    <canvas
+                      ref={canvasRef}
+                      className="rounded-lg cursor-pointer"
+                      style={{ maxWidth: "100%", height: "auto" }}
+                      onClick={() => {
+                        const canvas = canvasRef.current
+                        if (canvas) {
+                          const newWindow = window.open('', '_blank')
+                          if (newWindow) {
+                            newWindow.document.write(`
+                              <html>
+                                <head><title>Health Card Preview</title></head>
+                                <body style="margin: 0; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+                                  <img src="${canvas.toDataURL()}" style="max-width: 90%; max-height: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
+                                </body>
+                              </html>
+                            `)
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  💡 Click the card to view in full size • The QR code contains encrypted health information
+                </p>
               </div>
             </CardContent>
           </Card>
 
           {/* Worker Information Summary */}
-          <Card>
-            <CardHeader>
+          <Card className="shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b">
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Card Information
+                <Shield className="h-5 w-5 text-purple-600" />
+                Card Information Summary
               </CardTitle>
+              <CardDescription>
+                Information included in the generated health card
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t.workerName}</p>
-                    <p className="text-foreground">{worker.fullName}</p>
+            <CardContent className="p-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm font-semibold text-blue-900 mb-1">{t.workerName}</p>
+                    <p className="text-blue-800 font-medium">{worker.fullName}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t.workerId}</p>
-                    <p className="text-foreground">{worker.workerId}</p>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm font-semibold text-green-900 mb-1">{t.workerId}</p>
+                    <p className="text-green-800 font-medium">{worker.workerId}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Age</p>
-                    <p className="text-foreground">{calculateAge(worker.dateOfBirth)} years</p>
+                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <p className="text-sm font-semibold text-purple-900 mb-1">Age</p>
+                    <p className="text-purple-800 font-medium">{calculateAge(worker.dateOfBirth)} years old</p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t.bloodGroup}</p>
-                    <p className="text-foreground">{worker.bloodGroup || "Not specified"}</p>
+                <div className="space-y-4">
+                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-sm font-semibold text-red-900 mb-1">{t.bloodGroup}</p>
+                    <p className="text-red-800 font-medium">
+                      {worker.bloodGroup || "Not specified"}
+                      {worker.bloodGroup && <span className="ml-2 text-xs bg-red-200 px-2 py-1 rounded">CRITICAL INFO</span>}
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t.allergies}</p>
-                    <p className="text-foreground">{worker.allergies || t.noAllergies}</p>
+                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p className="text-sm font-semibold text-yellow-900 mb-1">{t.allergies}</p>
+                    <p className="text-yellow-800 font-medium">
+                      {worker.allergies || t.noAllergies}
+                      {worker.allergies && <span className="ml-2 text-xs bg-yellow-200 px-2 py-1 rounded">⚠ ALERT</span>}
+                    </p>
                   </div>
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-semibold text-gray-900 mb-1">{t.emergencyContact}</p>
+                    <p className="text-gray-800 font-medium">{worker.phoneNumber || "Not provided"}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <div className="flex items-start space-x-3">
+                  <QrCode className="h-5 w-5 text-indigo-600 mt-1" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t.emergencyContact}</p>
-                    <p className="text-foreground">{worker.phoneNumber || "Not provided"}</p>
+                    <p className="text-sm font-semibold text-indigo-900">QR Code Security</p>
+                    <p className="text-xs text-indigo-700 mt-1">
+                      The QR code contains encrypted emergency health information that can be scanned by healthcare 
+                      providers for immediate access during medical emergencies. All data is securely encoded and 
+                      access is logged for audit purposes.
+                    </p>
                   </div>
                 </div>
               </div>

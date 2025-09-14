@@ -4,40 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated color tokens for healthcare system */
-  --background: #ffffff;
-  --foreground: #475569;
-  --card: #f9fafb;
-  --card-foreground: #475569;
+  /* Professional healthcare color system - inspired by Ayushman Bharat and modern health portals */
+  --background: #fdfdfd;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
   --popover: #ffffff;
-  --popover-foreground: #475569;
-  --primary: #0891b2;
+  --popover-foreground: #1e293b;
+  --primary: #0369a1; /* Professional medical blue */
   --primary-foreground: #ffffff;
-  --secondary: #4b5563;
+  --secondary: #059669; /* Health/wellness green */
   --secondary-foreground: #ffffff;
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
-  --accent: #4b5563;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #0284c7; /* Accent blue for highlights */
   --accent-foreground: #ffffff;
-  --destructive: #be123c;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
+  --border: #e2e8f0;
   --input: #ffffff;
-  --ring: #0891b2;
-  --chart-1: #ec4899;
-  --chart-2: #fbbf24;
-  --chart-3: #4ade80;
-  --chart-4: #60a5fa;
-  --chart-5: #9333ea;
-  --radius: 0.5rem;
-  --sidebar: #f9fafb;
-  --sidebar-foreground: #475569;
+  --ring: #0369a1;
+  --chart-1: #059669; /* Health green */
+  --chart-2: #dc7730; /* Warning orange */
+  --chart-3: #0369a1; /* Primary blue */
+  --chart-4: #7c3aed; /* Purple accent */
+  --chart-5: #059669; /* Success green */
+  --radius: 0.75rem; /* Slightly larger radius for modern feel */
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #1e293b;
   --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #475569;
-  --sidebar-accent: #0891b2;
+  --sidebar-primary-foreground: #1e293b;
+  --sidebar-accent: #0369a1;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #e5e7eb;
-  --sidebar-ring: #0891b2;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #0369a1;
 }
 
 .dark {
@@ -47,7 +47,32 @@
   --card-foreground: #f1f5f9;
   --popover: #1e293b;
   --popover-foreground: #f1f5f9;
-  --primary: #0891b2;
+  --primary: #0284c7; /* Adjusted for dark mode visibility */
+  --primary-foreground: #ffffff;
+  --secondary: #10b981; /* Brighter green for dark mode */
+  --secondary-foreground: #ffffff;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #0284c7;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #334155;
+  --input: #1e293b;
+  --ring: #0284c7;
+  --chart-1: #10b981;
+  --chart-2: #f59e0b;
+  --chart-3: #0284c7;
+  --chart-4: #8b5cf6;
+  --chart-5: #10b981;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #0284c7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #334155;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #334155;
+  --sidebar-ring: #0284c7;
   --primary-foreground: #ffffff;
   --secondary: #334155;
   --secondary-foreground: #f1f5f9;
@@ -120,7 +145,69 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+  
+  /* Professional typography for healthcare */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+  }
+  
+  h1 { font-size: 2.25rem; }
+  h2 { font-size: 1.875rem; }
+  h3 { font-size: 1.5rem; }
+  
+  /* Smooth transitions for better UX */
+  .transition-all {
+    transition: all 0.3s ease;
+  }
+  
+  /* Custom focus styles for accessibility */
+  .focus-visible:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Custom animations for health portal feel */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-health {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-pulse-health {
+  animation: pulse-health 2s infinite;
+}
+
+/* Professional card shadows */
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.card-shadow-lg {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }

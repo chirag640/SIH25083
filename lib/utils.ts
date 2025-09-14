@@ -95,9 +95,10 @@ export class SecurityUtils {
 
   static validateName(name: string): boolean {
     if (!name) return false
-    // Allow letters, spaces, hyphens, apostrophes
-    const nameRegex = /^[a-zA-Z\s\-'.]+$/
-    return nameRegex.test(name) && name.length >= 2 && name.length <= 100
+    // Allow letters from any language, spaces, hyphens, apostrophes, and dots
+    // This regex supports international characters including Indian languages
+    const nameRegex = /^[\p{L}\p{M}\s\-'.]+$/u
+    return nameRegex.test(name.trim()) && name.trim().length >= 2 && name.trim().length <= 100
   }
 
   static logAccess(
