@@ -84,8 +84,8 @@ export default function HomePage() {
                   <h3 className="font-semibold mb-2">Worker Portal</h3>
                   <p className="text-sm text-muted-foreground mb-4">Access your health records and services</p>
                   <Button asChild variant="ghost" size="sm" className="w-full">
-                    <Link href="/workers/dashboard">
-                      Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                    <Link href="/workers">
+                      Portal <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                 </CardContent>

@@ -44,6 +44,9 @@ interface WorkerData {
   nativeDistrict: string
   currentAddress: string
   phoneNumber: string
+  emergencyContactName: string
+  emergencyContactRelationship: string
+  emergencyContactPhone: string
   healthHistory: string
   bloodGroup: string
   allergies: string
@@ -66,6 +69,9 @@ export default function RegisterWorkerPage() {
     nativeDistrict: "",
     currentAddress: "",
     phoneNumber: "",
+  emergencyContactName: "",
+  emergencyContactRelationship: "",
+  emergencyContactPhone: "",
     healthHistory: "",
     bloodGroup: "",
     allergies: "",
@@ -121,6 +127,13 @@ export default function RegisterWorkerPage() {
           return t.registration.errors.phoneInvalid
         }
         return ""
+      case "emergencyContactPhone":
+        if (!value || typeof value !== 'string' || !SecurityUtils.validatePhoneNumber(value)) return 'Invalid emergency contact phone number'
+        return ""
+      case "emergencyContactName":
+        if (!value || typeof value !== 'string') return 'Emergency contact name is required'
+        if (!SecurityUtils.validateName(value)) return 'Emergency contact name is invalid'
+        return ""
       case "consent":
         if (!value) return t.registration.errors.consentRequired
         return ""
@@ -135,8 +148,8 @@ export default function RegisterWorkerPage() {
 
     // Validate all required fields
     const fieldsToValidate: (keyof WorkerData)[] = [
-      "fullName", "dateOfBirth", "gender", "nativeState", 
-      "nativeDistrict", "currentAddress", "phoneNumber", "consent"
+  "fullName", "dateOfBirth", "gender", "nativeState", 
+  "nativeDistrict", "currentAddress", "phoneNumber", "emergencyContactName", "emergencyContactRelationship", "emergencyContactPhone", "consent"
     ]
 
     fieldsToValidate.forEach(field => {
@@ -176,61 +189,65 @@ export default function RegisterWorkerPage() {
     setIsSubmitting(true)
 
     try {
-      // Sanitize all input data
-      const sanitizedData = {
-        ...formData,
-        fullName: SecurityUtils.sanitizeInput(formData.fullName),
-        nativeState: SecurityUtils.sanitizeInput(formData.nativeState),
-        nativeDistrict: SecurityUtils.sanitizeInput(formData.nativeDistrict),
-        currentAddress: SecurityUtils.sanitizeInput(formData.currentAddress),
-        phoneNumber: SecurityUtils.sanitizeInput(formData.phoneNumber),
-        healthHistory: SecurityUtils.sanitizeInput(formData.healthHistory),
-        allergies: SecurityUtils.sanitizeInput(formData.allergies),
-        currentMedication: SecurityUtils.sanitizeInput(formData.currentMedication),
+      // Prepare registration data for API
+      const registrationData = {
+        fullName: formData.fullName,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        phoneNumber: formData.phoneNumber,
+        nativeState: formData.nativeState,
+        nativeDistrict: formData.nativeDistrict,
+        currentAddress: formData.currentAddress,
+  emergencyContactName: formData.emergencyContactName,
+  emergencyContactRelationship: formData.emergencyContactRelationship,
+  emergencyContactPhone: formData.emergencyContactPhone,
+        bloodGroup: formData.bloodGroup,
+        allergies: formData.allergies,
+        currentMedication: formData.currentMedication,
+        // Generate email from phone number for now (can be improved later)
+        email: `worker${formData.phoneNumber}@migrantworker.gov.in`,
+        // Generate a temporary password (should be changed by user later)
+        password: `Worker@${formData.phoneNumber.slice(-4)}`
       }
 
-      // Generate secure worker ID
-      const workerId = SecurityUtils.generateSecureId()
+      // Call the worker registration API
+      const response = await fetch('/api/workers/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registrationData)
+      })
 
-      // Create worker record with metadata
-      const workerRecord = {
-        ...sanitizedData,
-        workerId,
-        createdAt: new Date().toISOString(),
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Registration failed')
       }
-
-      // Encrypt sensitive data before storage
-      const encryptedRecord = DataManager.encryptSensitiveData(workerRecord)
-
-      // Verify data integrity
-      if (!SecurityUtils.checkDataIntegrity(encryptedRecord)) {
-        throw new Error("Data integrity check failed")
-      }
-
-      // Store encrypted data
-      localStorage.setItem(`worker_${workerId}`, JSON.stringify(encryptedRecord))
-
-      // Log the registration action
-      SecurityUtils.logAccess("worker_registration", workerId, "health_worker")
 
       // Show success toast
       toast({
         title: "Registration Successful! 🎉",
-        description: `Welcome ${formData.fullName}! Your Worker ID is ${workerId}`,
+        description: `Welcome ${formData.fullName}! Your Worker ID is ${result.worker.workerId}`,
       })
+
+      // Store authentication tokens if provided
+      if (result.tokens) {
+        localStorage.setItem('authTokens', JSON.stringify(result.tokens))
+        localStorage.setItem('currentUser', JSON.stringify(result.user))
+      }
 
       // Brief delay to show the success message
       setTimeout(() => {
-        router.push(`/workers/${workerId}`)
+        router.push(`/workers/${result.worker.workerId}`)
       }, 1500)
     } catch (error) {
-      console.error("Error saving worker record:", error)
+      console.error("Error registering worker:", error)
       toast({
         title: "Registration Failed",
-        description: "We couldn't save your registration. Please try again or contact support if the problem persists.",
+        description: error instanceof Error ? error.message : "We couldn't save your registration. Please try again or contact support if the problem persists.",
         variant: "destructive"
       })
-      SecurityUtils.logAccess("worker_registration_failed", undefined, "health_worker")
     } finally {
       setIsSubmitting(false)
     }
@@ -436,6 +453,41 @@ export default function RegisterWorkerPage() {
                     {fieldErrors.phoneNumber}
                   </p>
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContactName" className="text-base font-medium">Emergency Contact Name *</Label>
+                  <Input
+                    id="emergencyContactName"
+                    value={formData.emergencyContactName}
+                    onChange={(e) => updateFormData("emergencyContactName", e.target.value)}
+                    className="h-12"
+                    placeholder="Full name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContactRelationship" className="text-base font-medium">Relationship *</Label>
+                  <Input
+                    id="emergencyContactRelationship"
+                    value={formData.emergencyContactRelationship}
+                    onChange={(e) => updateFormData("emergencyContactRelationship", e.target.value)}
+                    className="h-12"
+                    placeholder="e.g., spouse, parent"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContactPhone" className="text-base font-medium">Emergency Contact Phone *</Label>
+                  <Input
+                    id="emergencyContactPhone"
+                    value={formData.emergencyContactPhone}
+                    onChange={(e) => updateFormData("emergencyContactPhone", e.target.value)}
+                    className="h-12"
+                    placeholder="+91 XXXXX XXXXX"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

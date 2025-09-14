@@ -73,8 +73,8 @@ export default function WorkerDocumentsPage() {
         const docData = localStorage.getItem(key)
         if (docData) {
           try {
-            const document = JSON.parse(docData)
-            allDocuments.push(document)
+            const parsedDoc = JSON.parse(docData)
+            allDocuments.push(parsedDoc)
           } catch (error) {
             console.error("Error parsing document:", error)
           }
@@ -156,8 +156,8 @@ export default function WorkerDocumentsPage() {
       loadDocuments()
 
       // Reset file input
-      const fileInput = document.getElementById("file-upload") as HTMLInputElement
-      if (fileInput) fileInput.value = ""
+  const fileInputEl = window.document.getElementById("file-upload") as HTMLInputElement
+  if (fileInputEl) fileInputEl.value = ""
     } catch (error) {
       console.error("Error uploading document:", error)
       setUploadError("Error uploading document. Please try again.")
@@ -171,11 +171,11 @@ export default function WorkerDocumentsPage() {
       // Decrypt file data
       const decryptedData = SecurityUtils.decrypt(document.fileData)
 
-      // Create download link
-      const link = document.createElement("a")
-      link.href = decryptedData
-      link.download = document.fileName
-      link.click()
+  // Create download link
+  const linkEl = window.document.createElement("a")
+  linkEl.href = decryptedData
+  linkEl.download = document.fileName
+  linkEl.click()
 
       SecurityUtils.logAccess("document_download", workerId, "health_worker")
     } catch (error) {

@@ -102,44 +102,166 @@ Open http://localhost:3000 after `pnpm dev` to use the app.
 
 ## Testing the QR scanner (live & simulated)
 
-1. Open the app in a Chromium-based browser (Chrome/Edge) and visit:
+# Migrant Worker Healthcare System
 
-   http://localhost:3000/doctors/qr-scanner
-
-2. Click "Start Camera" and allow camera permission. Point a QR code at the camera.
-
-- For testing, use the existing "Simulate QR Scan" button (works without camera).
-- To test deep-link behavior, scan a QR that contains JSON like:
-
-  {"id":"MW123","type":"health_record","name":"..."}
-
-  That should navigate to /workers/health-card/MW123.
-- If the browser does not support the BarcodeDetector API, the page will show a fallback note and you can use the Simulate QR Scan.
-
-## Development notes
-
-- The app is client-heavy; many pages use `"use client"` and depend on `localStorage` for data.
-- If you intend to make the app multi-user or production-grade:
-  1. Add authentication (doctors, admins, health workers).
-  2. Replace ad-hoc encryption with secure crypto (Web Crypto API or server-side encryption with proper key management).
-  3. Move sensitive storage to a server or an encrypted client store.
-
-## Recommended next steps
-
-1. Replace demo encryption with Web Crypto API (AES-GCM) and add secure key management.
-2. Implement server-side storage and authentication for doctors/admins; provide optional offline sync.
-3. Harden XSS protections and perform a security audit.
-4. Add unit tests for `lib/utils.ts` (encryption, integrity hash, storage cleanup) and small E2E tests for main flows (register -> add visit -> view).
-5. Populate this README with quick screenshots and a contributions section if the project will accept collaborators.
-
-## Contribution
-
-If you'd like me to implement any of the next steps (README expansion, unit tests, replace encryption with Web Crypto, or add server sync), tell me which one to do next and I'll implement it.
-
-## License & contact
-
-This repository currently does not include a license file. Add `LICENSE` if you plan to share or publish this project.
+A lightweight, client-first prototype for registering and managing health records of migrant workers. Built with Next.js (App Router), TypeScript and Tailwind CSS. The app demonstrates local persistence patterns, QR-based quick access, and role-based UI for workers, doctors and administrators.
 
 ---
 
-Generated on September 5, 2025 — overview and recommendations derived from the project files in this repository.
+## Quick summary
+
+- Local-first prototype using `localStorage` for portability and low-infrastructure deployments.
+- Role-based flows: worker portal, doctor dashboard, admin console.
+- Features: register workers, log visits, upload documents, QR health cards, audit logs, import/export backup.
+- Built with: Next.js 14 (App Router), React, TypeScript, Tailwind CSS, Mongoose (optional server-side), Lucide icons.
+
+---
+
+## Table of contents
+
+1. Features
+2. Project structure
+3. Getting started (dev)
+4. Environment variables
+5. APIs (server-side routes)
+6. Authentication and roles
+7. Data model and storage
+8. Security considerations
+9. Development notes & testing
+10. Next steps
+11. License & contribution
+
+---
+
+## 1) Features
+
+- Worker registration and profile management
+- Medical visit logging and prescriptions
+- Document uploads and versioning
+- QR-enabled health cards and scanner
+- Doctor dashboard with search, filters and follow-up list
+- Admin panel with system stats, audit logs and import/export
+- Multi-language support via `useTranslations`
+
+---
+
+## 2) Project structure (important files)
+
+- `app/` - Next.js App Router routes and pages
+  - `/` - Landing page (`app/page.tsx`)
+  - `/workers` - Worker portal (auth + dashboard) (`app/workers/page.tsx`, `app/workers/dashboard`)
+  - `/doctors` - Doctor portal (`app/doctors/page.tsx`, `app/doctors/dashboard`)
+  - `/admin` - Admin console (`app/admin/page.tsx`, `app/admin/dashboard`)
+  - `app/api/*` - server routes for authentication, workers and utilities
+- `components/` - UI primitives and theme provider
+- `lib/` - helper utilities (security, storage, data manager, translations)
+- `public/` - placeholder assets
+
+---
+
+## 3) Getting started (development)
+
+Prerequisites:
+- Node 18+ (LTS recommended)
+- pnpm (recommended) or npm/yarn
+
+Setup (Windows, cmd.exe):
+
+```cmd
+pnpm install
+pnpm dev
+```
+
+Open `http://localhost:3000`.
+
+---
+
+## 4) Environment variables
+
+The app supports optional server-side features (MongoDB, JWT) when environment variables are provided.
+
+Example `.env` variables used by server-side code:
+
+- `MONGO_URI` - MongoDB connection string
+- `DB_NAME` - (optional) database name, defaults to `migrant-worker-system`
+- `JWT_SECRET` - secret for signing access tokens
+- `JWT_REFRESH_SECRET` - secret for signing refresh tokens
+
+If you don't provide these, many features will fall back to local-only storage and the client-first behavior.
+
+---
+
+## 5) APIs (server routes)
+
+Server routes live under `app/api`. Key endpoints:
+
+- `POST /api/auth/register` — register a new user (worker/doctor/admin). Expects JSON: `{ name, email, password, role, profileData }`.
+- `POST /api/auth/login` — login, returns `{ user, tokens }` on success.
+- `POST /api/auth/refresh` — refresh JWT
+- `GET  /api/auth/verify?token=...` — verify an account or token
+- `GET  /api/workers/[id]` — get worker profile and decrypted fields
+- `POST /api/workers/[id]` — update worker profile
+- `GET  /api/status` — lightweight status endpoint (name, version, uptime)
+
+Note: API behavior adapts to presence of `MONGO_URI` and auth configuration. If no DB is available, the app will primarily use `localStorage` (client-side) helpers in `lib/utils.ts`.
+
+---
+
+## 6) Authentication & roles
+
+Roles: `worker`, `doctor`, `admin`.
+
+- Registration endpoints create a user account and (optionally) a profile document.
+- Login endpoint returns JWT access & refresh tokens. Client stores tokens in `localStorage` under `authTokens` and `currentUser`.
+- Protected dashboards check `currentUser.role` and redirect to role-specific auth pages when not authenticated.
+
+---
+
+## 7) Data model & storage
+
+This is summarized from the app's utilities and README:
+
+- Worker (decrypted): `{ workerId, fullName, dateOfBirth, gender, phoneNumber, nativeState, nativeDistrict, currentAddress, healthHistory, allergies, currentMedication, bloodGroup, consent, createdAt, lastModified }`
+- Encrypted worker fields: sensitive fields stored as `<field>_encrypted` with a `dataIntegrityHash` produced by `DataManager`.
+- Documents: base64 payload plus metadata and checksum.
+- Visit history: arrays per-worker (keyed by `medical_visits_<workerId>`)
+- Audit logs: `audit_logs` and `critical_audit_logs` in localStorage
+
+Helpers and encryption live in `lib/`.
+
+---
+
+## 8) Security considerations
+
+- Current encryption is lightweight and intended for prototyping only. Do not rely on it for production use.
+- Storing sensitive health data in `localStorage` risks exposure to XSS and device compromise.
+- For production, move data to a server-side DB, use secure storage, and implement strong authentication and key management.
+
+---
+
+## 9) Development notes & testing
+
+- The app is client-heavy; many pages use `"use client"`.
+- Run `pnpm dev` to start. Use the QR scanner simulation when camera is not available.
+- If you enable server-side MongoDB and JWT env vars, the app will use the server routes for persistence and auth.
+
+---
+
+## 10) Next steps / Recommendations
+
+1. Replace ad-hoc encryption with Web Crypto API (AES-GCM) and proper key management.
+2. Move sensitive data to server-side storage with authentication and TLS.
+3. Harden against XSS and CSRF; add Content Security Policy.
+4. Add unit tests for `lib/utils.ts` and integration tests for API routes.
+5. Add E2E tests for register -> login -> create visit -> view flow.
+
+---
+
+## 11) License & contribution
+
+Add a `LICENSE` file if the project will be shared.
+Contributions are welcome—open an issue or a PR with a clear description.
+
+---
+
+Generated on: 2025-09-14

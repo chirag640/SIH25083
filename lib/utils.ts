@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Re-export modern security utilities
+export { SecureCrypto, EncryptionManager } from './crypto'
+export { AuthService, TokenManager, PermissionManager, RouteGuard } from './auth'
+// Note: Database models are server-side only and should be imported directly from './database' in API routes
+
 // Detect browser runtime before accessing window/localStorage
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined"
 
@@ -462,6 +467,13 @@ export class EnhancedStorageManager {
   }
 
   // Convenience higher-level storage helpers used by UI pages
+  static exportAllData(): string {
+    return StorageUtils.exportAllData()
+  }
+
+  static importData(jsonData: string): { success: boolean; message: string; imported: number } {
+    return StorageUtils.importData(jsonData)
+  }
 }
 
 export class StorageUtils {
