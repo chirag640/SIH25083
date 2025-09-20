@@ -263,5 +263,3 @@ Add a `LICENSE` file if the project will be shared.
 Contributions are welcome—open an issue or a PR with a clear description.
 
 ---
-
-Generated on: 2025-09-14
